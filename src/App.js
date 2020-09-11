@@ -5,6 +5,10 @@ import { BrowserRouter as Router, Switch, Route, useRouteMatch, useLocation } fr
 // Called sometime after postMessage is called
 function receiveMessage(event:MessageEvent)
 {
+  if (event.data && (
+    event.data.source && event.data.source.includes('devtools')
+  ))
+    return;
   console.log(event);
 //
 //   // Do we trust the sender of this message?
@@ -18,10 +22,11 @@ function receiveMessage(event:MessageEvent)
 //   // you must do in any case), a convenient idiom for replying to a
 //   // message is to call postMessage on event.source and provide
 //   // event.origin as the targetOrigin.
-  event.source.postMessage("hi there yourself!  the secret response " + "is: rheeeeet!", event.origin);
+//   event.source.postMessage("hi there yourself!  the secret response " + "is: rheeeeet!", event.origin);
 }
 
 window.addEventListener("message", receiveMessage, false);
+window.opener.postMessage('ready', window.opener);
 
 // onmessage = (evt:MessageEvent) => {
 //   console.log(evt);
