@@ -1,41 +1,64 @@
 import React from 'react';
 import './App.css';
 import { BrowserRouter as Router, Switch, Route, useRouteMatch, useLocation } from 'react-router-dom';
+import axios, {AxiosResponse, AxiosError} from 'axios'
+
+const protocol = 'bcps';
+
+const actions = {
+  window_is_ready: 'window_is_ready',
+  axios_request: 'axios_request',
+};
 
 // Called sometime after postMessage is called
-function receiveMessage(event:MessageEvent)
+async function Xmessage(event:MessageEvent)
 {
-  if (event.data && (
-    event.data.source && event.data.source.includes('devtools')
-  ))
+  // // Do we trust the sender of this message?
+  // if (event.origin !== "*")
+  //   return;
+
+  // ignore non bcps protocol events
+  if (!(event.data && event.data.protocol === protocol))
     return;
-  console.log(event);
-//
-//   // Do we trust the sender of this message?
-//   if (event.origin !== "*")
-//     return;
-//
-//   // event.source is window.opener
-//   // event.data is "hello there!"
-//
-//   // Assuming you've verified the origin of the received message (which
-//   // you must do in any case), a convenient idiom for replying to a
-//   // message is to call postMessage on event.source and provide
-//   // event.origin as the targetOrigin.
-//   event.source.postMessage("hi there yourself!  the secret response " + "is: rheeeeet!", event.origin);
+
+  const action = event.data.action;
+  const data = event.data.data;
+
+  const send = (action, response) => event.source.postMessage({protocol, action, response}, event.origin);
+
+  // window is ready
+  if (action === actions.window_is_ready)
+    return send(action, true);
+
+  // send axios request
+  if (action === actions.axios_request) {
+    let res: AxiosResponse;
+    try {
+      res = await axios(data.config)
+    } catch (error) {
+      const e: AxiosError = error;
+      res = {
+        config: e.config ? e.config : data.config,
+        code: e.code ? e.code : 500,
+        request: e.request ? e.request : null,
+        response: e.response ? e.response : `${e}`,
+        isAxiosError: e.isAxiosError ? e.isAxiosError : false,
+        requestFailed: true,
+      };
+    }
+    return send(action, {id: data.id, response: res});
+  }
+
+  // request is not supported
+  return event.source.postMessage({protocol, send_axios_response: true, error: true, errorMessage: 'request is not supported'}, event.origin);
 }
 
-window.addEventListener("message", receiveMessage, false);
-window.opener.postMessage('ready', window.opener);
+window.addEventListener("message", Xmessage, false);
 
-// onmessage = (evt:MessageEvent) => {
-//   console.log(evt);
-//   evt.source.postMessage('sweet!')
-// };
 
 function Home() {
-  const match = useRouteMatch();
-  const location = useLocation();
+  // const match = useRouteMatch();
+  // const location = useLocation();
   // console.log('match', match);
   // const data = new URLSearchParams(location.search).get("data");
   // console.log('parse data', JSON.parse(data));
