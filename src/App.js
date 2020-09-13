@@ -46,7 +46,7 @@ async function Xmessage(event:MessageEvent)
         requestFailed: true,
       };
     }
-    return send(action, {id: data.id, response: res});
+    return send(action, {id: data.id, response: JSON.parse(JSON.stringify(res))});
   }
 
   // request is not supported
