@@ -16,7 +16,7 @@ async function Xmessage(event:MessageEvent)
   // // Do we trust the sender of this message?
   // if (event.origin !== "*")
   //   return;
-
+console.log(event);
   // ignore non bcps protocol events
   if (!(event.data && event.data.protocol === protocol))
     return;
