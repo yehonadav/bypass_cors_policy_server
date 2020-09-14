@@ -8,6 +8,7 @@ const protocol = 'bcps';
 const actions = {
   window_is_ready: 'window_is_ready',
   axios_request: 'axios_request',
+  axios_requests: 'axios_requests',
 };
 
 // Called sometime after postMessage is called
@@ -47,6 +48,30 @@ console.log(event);
       };
     }
     return send(action, {id: data.id, response: JSON.parse(JSON.stringify(res))});
+  }
+
+  // send axios requests
+  if (action === actions.axios_requests) {
+    const pending_responses = data.requests.map(config=>axios(config));
+    const responses = [];
+    for (let pend of pending_responses) {
+      let res: AxiosResponse;
+      try {
+        res = await pend;
+      } catch (error) {
+        const e: AxiosError = error;
+        res = {
+          config: e.config ? e.config : data.config,
+          code: e.code ? e.code : 500,
+          request: e.request ? e.request : null,
+          response: e.response ? e.response : `${e}`,
+          isAxiosError: e.isAxiosError ? e.isAxiosError : false,
+          requestFailed: true,
+        };
+      }
+      responses.push(res);
+    }
+    return send(action, {id: data.id, response: JSON.parse(JSON.stringify(responses))});
   }
 
   // request is not supported
