@@ -11,8 +11,10 @@ const actions = {
   axios_requests: 'axios_requests',
 };
 
+const do_nothing_function = () => {};
+
 const requests = {
-  setEvents: () => {},
+  setEvents: do_nothing_function,
   events: [],
 };
 
@@ -27,12 +29,21 @@ async function Xmessage(event:MessageEvent)
   if (!(event.data && event.data.protocol === protocol))
     return;
 
-  requests.setEvents([event, ...requests.events]);
+  const requestEvent = {
+    event,
+    response: null,
+  };
+
+  requests.setEvents([requestEvent, ...requests.events]);
 
   const action = event.data.action;
   const data = event.data.data;
 
-  const send = (action, response) => event.source.postMessage({protocol, action, response}, event.origin);
+  const send = (action, response) => {
+    requestEvent.response = response;
+    requests.setEvents([...requests.events]);
+    event.source.postMessage({protocol, action, response}, event.origin);
+  };
 
   // window is ready
   if (action === actions.window_is_ready)
@@ -82,7 +93,9 @@ async function Xmessage(event:MessageEvent)
   }
 
   // request is not supported
-  return event.source.postMessage({protocol, send_axios_response: true, error: true, errorMessage: 'request is not supported'}, event.origin);
+  requestEvent.response = 'request is not supported';
+  requests.setEvents([...requests.events]);
+  return event.source.postMessage({protocol, send_axios_response: true, error: true, errorMessage: requestEvent.response}, event.origin);
 }
 
 window.addEventListener("message", Xmessage, false);
@@ -98,15 +111,23 @@ function Home() {
 
   requests.setEvents = useCallback((events) => {
     setEvents(events);
-    requests.events = events
+    requests.events = events;
   }, [setEvents]);
 
   return (
     <div>
       Please wait... Processing requests
-      {events.map((event:MessageEvent, index:number) =>
-        <div key={index}>{JSON.stringify(event.data)}</div>)
-      }
+      {events.map((requestEvent, index:number) => {
+        const event:MessageEvent = requestEvent.event;
+        const response = requestEvent.response;
+        return (
+          <>
+            <div key={index}>event: {JSON.stringify(event.data)}</div>
+            <div key={index}>response: {JSON.stringify(response)}</div>
+            <br/>
+          </>
+        )
+      })}
     </div>
   )
 }
