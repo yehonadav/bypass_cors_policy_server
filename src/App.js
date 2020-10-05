@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useCallback, useState} from 'react';
 import './App.css';
 import { BrowserRouter as Router, Switch, Route, useRouteMatch, useLocation } from 'react-router-dom';
 import axios, {AxiosResponse, AxiosError} from 'axios'
@@ -11,16 +11,23 @@ const actions = {
   axios_requests: 'axios_requests',
 };
 
+const requests = {
+  setEvents: () => {},
+  events: [],
+};
+
 // Called sometime after postMessage is called
 async function Xmessage(event:MessageEvent)
 {
   // // Do we trust the sender of this message?
   // if (event.origin !== "*")
   //   return;
-console.log(event);
+
   // ignore non bcps protocol events
   if (!(event.data && event.data.protocol === protocol))
     return;
+
+  requests.setEvents([event, ...requests.events]);
 
   const action = event.data.action;
   const data = event.data.data;
@@ -87,10 +94,19 @@ function Home() {
   // console.log('match', match);
   // const data = new URLSearchParams(location.search).get("data");
   // console.log('parse data', JSON.parse(data));
+  const [events, setEvents] = useState(requests.events);
+
+  requests.setEvents = useCallback((events) => {
+    setEvents(events);
+    requests.events = events
+  }, [setEvents]);
+
   return (
     <div>
-      listening...
-      {/*{data}*/}
+      Please wait... Processing requests
+      {events.map((event:MessageEvent, index:number) =>
+        <div key={index}>{JSON.stringify(event.data)}</div>)
+      }
     </div>
   )
 }
